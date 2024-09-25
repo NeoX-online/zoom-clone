@@ -1,4 +1,6 @@
-const socket = io.connect();
+const socket = io({
+    path: '/conference/socket.io'
+});
 
 const localVideo = document.querySelector('#localVideo-container video');
 const videoGrid = document.querySelector('#videoGrid');

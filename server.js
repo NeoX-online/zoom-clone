@@ -5,6 +5,7 @@ const socketIO = require('socket.io');
 
 const port = process.env.PORT || 8080;
 const env = process.env.NODE_ENV || 'development';
+const basePath = '/conference';
 
 // Redirect to https
 app.get('*', (req, res, next) => {
@@ -14,8 +15,9 @@ app.get('*', (req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, 'app')));
-app.use(express.static(path.join(__dirname, 'node_modules')));
+// Serving static files under a base path
+app.use(basePath, express.static(path.join(__dirname, 'app')));
+app.use(basePath, express.static(path.join(__dirname, 'node_modules')));
 
 const server = require('http').createServer(app);
 server.listen(port, () => {
@@ -25,7 +27,10 @@ server.listen(port, () => {
 /**
  * Socket.io events
  */
-const io = socketIO(server);
+const io = socketIO(server, {
+    path: `${basePath}/socket.io`
+});
+
 io.sockets.on('connection', function (socket) {
     /**
      * Log actions to the client

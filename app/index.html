@@ -2,8 +2,9 @@
 <html>
     <head>
         <title>WebRTC Video conference</title>
-        <link rel="shortcut icon" type="image/ico" href="/favicon.ico" />
-        <link rel="stylesheet" href="css/styles.css" />
+        <link rel="shortcut icon" type="image/ico" href="/conference/favicon.ico" />
+        <link rel="stylesheet" href="/conference/css/styles.css" />
+        <base href="/conference/">
     </head>
 
     <body>
@@ -24,9 +25,9 @@
             <div id="videoGrid" class="grid-container"></div>
         </div>
 
-        <script src="/socket.io/socket.io.js"></script>
+        <script src="/conference/socket.io/socket.io.js"></script>
         <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-        <script src="/js/webtrc.js"></script>
-        <script src="/js/main.js"></script>
+        <script src="/conference/js/webtrc.js"></script>
+        <script src="/conference/js/main.js"></script>
     </body>
 </html>
