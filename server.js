@@ -14,7 +14,7 @@ app.get('*', (req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'app')));
 app.use(express.static(path.join(__dirname, 'node_modules')));
 
 const server = require('http').createServer(app);
