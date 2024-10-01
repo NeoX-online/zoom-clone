@@ -2,6 +2,8 @@ const socket = io({
     path: '/conference/socket.io'
 });
 
+const toggleMicBtn = document.querySelector('#toggleMicBtn');
+const toggleCamBtn = document.querySelector('#toggleCamBtn');
 const localVideo = document.querySelector('#localVideo-container video');
 const videoGrid = document.querySelector('#videoGrid');
 const notification = document.querySelector('#notification');
@@ -172,4 +174,22 @@ webrtc.addEventListener('notification', (e) => {
     console.log(notif);
 
     notify(notif);
+});
+
+// Toggle Microphone
+toggleMicBtn.addEventListener('click', () => {
+    const audioTrack = webrtc.localStream.getAudioTracks()[0];
+    if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        toggleMicBtn.textContent = audioTrack.enabled ? 'Mute Microphone' : 'Unmute Microphone';
+    }
+});
+
+// Toggle Camera
+toggleCamBtn.addEventListener('click', () => {
+    const videoTrack = webrtc.localStream.getVideoTracks()[0];
+    if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        toggleCamBtn.textContent = videoTrack.enabled ? 'Turn Off Camera' : 'Turn On Camera';
+    }
 });
