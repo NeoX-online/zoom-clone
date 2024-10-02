@@ -4,6 +4,8 @@ const socket = io({
 
 const toggleMicBtn = document.querySelector('#toggleMicBtn');
 const toggleCamBtn = document.querySelector('#toggleCamBtn');
+const cameraSelect = document.querySelector('#cameraSelect');
+const micSelect = document.querySelector('#micSelect');
 const localVideo = document.querySelector('#localVideo-container video');
 const videoGrid = document.querySelector('#videoGrid');
 const notification = document.querySelector('#notification');
@@ -192,4 +194,65 @@ toggleCamBtn.addEventListener('click', () => {
         videoTrack.enabled = !videoTrack.enabled;
         toggleCamBtn.textContent = videoTrack.enabled ? 'Turn Off Camera' : 'Turn On Camera';
     }
+});
+
+const getDevices = async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(device => device.kind === 'videoinput');
+    const microphones = devices.filter(device => device.kind === 'audioinput');
+
+    // Populate camera select
+    cameras.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = device.label || `Camera ${cameraSelect.length + 1}`;
+        cameraSelect.appendChild(option);
+    });
+
+    // Populate microphone select
+    microphones.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = device.label || `Microphone ${micSelect.length + 1}`;
+        micSelect.appendChild(option);
+    });
+};
+
+// Call getDevices when the script loads
+getDevices();
+
+// Update getLocalStream call
+webrtc.getLocalStream = async function () {
+    const audioDeviceId = micSelect.value; // Selected microphone device ID
+    const videoDeviceId = cameraSelect.value; // Selected camera device ID
+
+    return navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: audioDeviceId } },
+        video: { deviceId: { exact: videoDeviceId }, width: 640, height: 480 }
+    })
+    .then(stream => {
+        this.log('Got local stream.');
+        this._localStream = stream;
+        return stream;
+    })
+    .catch(() => {
+        this.error("Can't get user media");
+
+        this._emit('error', {
+            error: new Error(`Can't get user media`),
+        });
+    });
+};
+
+// Update the button click listener to call getLocalStream
+joinBtn.addEventListener('click', async () => {
+    const room = roomInput.value;
+    if (!room) {
+        notify('Room ID not provided');
+        return;
+    }
+
+    // Call getLocalStream with the selected devices
+    await webrtc.getLocalStream();
+    webrtc.joinRoom(room);
 });
