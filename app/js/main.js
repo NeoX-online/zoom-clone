@@ -30,11 +30,6 @@ const pcConfig = {
             username: 'webrtc@live.com',
         },
         {
-            urls: 'turn:numb.viagenie.ca',
-            credential: 'muazkh',
-            username: 'webrtc@live.com',
-        },
-        {
             urls: 'turn:192.158.29.39:3478?transport=udp',
             credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
             username: '28224511:1379330808',
@@ -43,7 +38,7 @@ const pcConfig = {
 };
 
 /**
- * Initialize webrtc
+ * Initialize WebRTC
  */
 const webrtc = new Webrtc(socket, pcConfig, {
     log: true,
@@ -52,29 +47,138 @@ const webrtc = new Webrtc(socket, pcConfig, {
 });
 
 /**
+ * Device selection and media handling
+ */
+const getDevices = async () => {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === 'videoinput');
+        const microphones = devices.filter(device => device.kind === 'audioinput');
+
+        // Clear and populate the camera select
+        cameraSelect.innerHTML = '';
+        cameras.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.textContent = device.label || `Camera ${cameraSelect.length + 1}`;
+            cameraSelect.appendChild(option);
+        });
+
+        // Clear and populate the microphone select
+        micSelect.innerHTML = '';
+        microphones.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.textContent = device.label || `Microphone ${micSelect.length + 1}`;
+            micSelect.appendChild(option);
+        });
+
+        console.log("Available cameras:", cameras);
+        console.log("Available microphones:", microphones);
+    } catch (err) {
+        console.error("Error getting devices:", err);
+    }
+};
+
+// Call getDevices when the page loads
+getDevices();
+
+// Function to get selected media stream with the chosen devices
+webrtc.getLocalStream = async function () {
+    const audioDeviceId = micSelect.value;
+    const videoDeviceId = cameraSelect.value;
+
+    console.log("Selected audio device:", audioDeviceId);
+    console.log("Selected video device:", videoDeviceId);
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
+            video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
+        });
+
+        console.log("Got local stream:", stream);
+
+        // Attach the stream to the video element
+        this._localStream = stream;
+        localVideo.srcObject = stream;
+
+        return stream;
+    } catch (err) {
+        console.error("Error getting local media stream:", err);
+        notify(`Error getting media: ${err.message}`);
+    }
+};
+
+/**
+ * Toggle microphone for the local user
+ */
+toggleMicBtn.addEventListener('click', () => {
+    const audioTrack = webrtc._localStream?.getAudioTracks()[0];
+    if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        console.log("Microphone is now", audioTrack.enabled ? "enabled" : "disabled");
+        toggleMicBtn.textContent = audioTrack.enabled ? 'Mute Microphone' : 'Unmute Microphone';
+    } else {
+        notify('No audio track available');
+    }
+});
+
+/**
+ * Toggle camera for the local user
+ */
+toggleCamBtn.addEventListener('click', () => {
+    const videoTrack = webrtc._localStream?.getVideoTracks()[0];
+    if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        console.log("Camera is now", videoTrack.enabled ? "enabled" : "disabled");
+        toggleCamBtn.textContent = videoTrack.enabled ? 'Turn Off Camera' : 'Turn On Camera';
+    } else {
+        notify('No video track available');
+    }
+});
+
+/**
+ * Update media stream when devices are changed
+ */
+cameraSelect.addEventListener('change', async () => {
+    await webrtc.getLocalStream();
+    notify('Camera changed successfully');
+});
+
+micSelect.addEventListener('change', async () => {
+    await webrtc.getLocalStream();
+    notify('Microphone changed successfully');
+});
+
+/**
  * Create or join a room
  */
 const roomInput = document.querySelector('#roomId');
 const joinBtn = document.querySelector('#joinBtn');
-joinBtn.addEventListener('click', () => {
+joinBtn.addEventListener('click', async () => {
     const room = roomInput.value;
     if (!room) {
         notify('Room ID not provided');
         return;
     }
 
+    // Get the stream before joining the room
+    await webrtc.getLocalStream();
     webrtc.joinRoom(room);
 });
 
+/**
+ * Set the room title and update notification
+ */
 const setTitle = (status, e) => {
     const room = e.detail.roomId;
-
     console.log(`Room ${room} was ${status}`);
-
     notify(`Room ${room} was ${status}`);
     document.querySelector('h1').textContent = `Room: ${room}`;
     webrtc.gotStream();
 };
+
 webrtc.addEventListener('createdRoom', setTitle.bind(this, 'created'));
 webrtc.addEventListener('joinedRoom', setTitle.bind(this, 'joined'));
 
@@ -92,23 +196,15 @@ webrtc.addEventListener('leftRoom', (e) => {
 });
 
 /**
- * Get local media
+ * Handle kicked event
  */
-webrtc
-    .getLocalStream(true, { width: 640, height: 480 })
-    .then((stream) => (localVideo.srcObject = stream));
-
 webrtc.addEventListener('kicked', () => {
     document.querySelector('h1').textContent = 'You were kicked out';
     videoGrid.innerHTML = '';
 });
 
-webrtc.addEventListener('userLeave', (e) => {
-    console.log(`user ${e.detail.socketId} left room`);
-});
-
 /**
- * Handle new user connection
+ * Handle new user joining the room
  */
 webrtc.addEventListener('newUser', (e) => {
     const socketId = e.detail.socketId;
@@ -120,7 +216,7 @@ webrtc.addEventListener('newUser', (e) => {
 
     const video = document.createElement('video');
     video.setAttribute('autoplay', true);
-    video.setAttribute('muted', true); // set to false
+    video.setAttribute('muted', true); 
     video.setAttribute('playsinline', true);
     video.srcObject = stream;
 
@@ -129,33 +225,16 @@ webrtc.addEventListener('newUser', (e) => {
 
     videoContainer.append(p);
     videoContainer.append(video);
-
-    // If user is admin add kick buttons
-    if (webrtc.isAdmin) {
-        const kickBtn = document.createElement('button');
-        kickBtn.setAttribute('class', 'kick_btn');
-        kickBtn.textContent = 'Kick';
-
-        kickBtn.addEventListener('click', () => {
-            webrtc.kickUser(socketId);
-        });
-
-        videoContainer.append(kickBtn);
-    }
     videoGrid.append(videoContainer);
 });
 
 /**
- * Handle user got removed
+ * Handle user leaving
  */
-webrtc.addEventListener('removeUser', (e) => {
+webrtc.addEventListener('userLeave', (e) => {
     const socketId = e.detail.socketId;
-    if (!socketId) {
-        // remove all remote stream elements
-        videoGrid.innerHTML = '';
-        return;
-    }
-    document.getElementById(socketId).remove();
+    console.log(`User ${socketId} left the room`);
+    document.getElementById(socketId)?.remove();
 });
 
 /**
@@ -164,7 +243,6 @@ webrtc.addEventListener('removeUser', (e) => {
 webrtc.addEventListener('error', (e) => {
     const error = e.detail.error;
     console.error(error);
-
     notify(error);
 });
 
@@ -174,85 +252,8 @@ webrtc.addEventListener('error', (e) => {
 webrtc.addEventListener('notification', (e) => {
     const notif = e.detail.notification;
     console.log(notif);
-
     notify(notif);
 });
 
-// Toggle Microphone
-toggleMicBtn.addEventListener('click', () => {
-    const audioTrack = webrtc.localStream.getAudioTracks()[0];
-    if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        toggleMicBtn.textContent = audioTrack.enabled ? 'Mute Microphone' : 'Unmute Microphone';
-    }
-});
-
-// Toggle Camera
-toggleCamBtn.addEventListener('click', () => {
-    const videoTrack = webrtc.localStream.getVideoTracks()[0];
-    if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        toggleCamBtn.textContent = videoTrack.enabled ? 'Turn Off Camera' : 'Turn On Camera';
-    }
-});
-
-const getDevices = async () => {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cameras = devices.filter(device => device.kind === 'videoinput');
-    const microphones = devices.filter(device => device.kind === 'audioinput');
-
-    // Populate camera select
-    cameras.forEach(device => {
-        const option = document.createElement('option');
-        option.value = device.deviceId;
-        option.textContent = device.label || `Camera ${cameraSelect.length + 1}`;
-        cameraSelect.appendChild(option);
-    });
-
-    // Populate microphone select
-    microphones.forEach(device => {
-        const option = document.createElement('option');
-        option.value = device.deviceId;
-        option.textContent = device.label || `Microphone ${micSelect.length + 1}`;
-        micSelect.appendChild(option);
-    });
-};
-
-// Call getDevices when the script loads
-getDevices();
-
-// Update getLocalStream call
-webrtc.getLocalStream = async function () {
-    const audioDeviceId = micSelect.value; // Selected microphone device ID
-    const videoDeviceId = cameraSelect.value; // Selected camera device ID
-
-    return navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: audioDeviceId } },
-        video: { deviceId: { exact: videoDeviceId }, width: 640, height: 480 }
-    })
-    .then(stream => {
-        this.log('Got local stream.');
-        this._localStream = stream;
-        return stream;
-    })
-    .catch(() => {
-        this.error("Can't get user media");
-
-        this._emit('error', {
-            error: new Error(`Can't get user media`),
-        });
-    });
-};
-
-// Update the button click listener to call getLocalStream
-joinBtn.addEventListener('click', async () => {
-    const room = roomInput.value;
-    if (!room) {
-        notify('Room ID not provided');
-        return;
-    }
-
-    // Call getLocalStream with the selected devices
-    await webrtc.getLocalStream();
-    webrtc.joinRoom(room);
-});
+// Initial call to get local stream to set up local video
+webrtc.getLocalStream();

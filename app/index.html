@@ -1,43 +1,55 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>WebRTC Video conference</title>
-        <link rel="shortcut icon" type="image/ico" href="/conference/favicon.ico" />
-        <link rel="stylesheet" href="/conference/css/styles.css" />
-        <base href="/conference/">
-    </head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Video Conference</title>
+    <link rel="shortcut icon" type="image/ico" href="/conference/favicon.ico" />
+    <link rel="stylesheet" href="/conference/css/styles.css" />
+    <base href="/conference/">
+</head>
 
-    <body>
-        <h1></h1>
+<body>
+    <div class="container">
+        <h1>WebRTC Video Conference</h1>
 
-        <label for="roomId">Room ID</label>
-        <input id="roomId" type="text" />
-        <button id="joinBtn">Join</button>
-        <button id="leaveBtn">Leave</button>
+        <div class="controls">
+            <label for="roomId">Room ID</label>
+            <input id="roomId" type="text" />
+            <button id="joinBtn">Join</button>
+            <button id="leaveBtn">Leave</button>
+        </div>
 
         <p id="notification"></p>
 
-        <div id="localVideo-container">
-            <video autoplay playsinline muted></video>
-        </div>
-        <div>
-            <label for="cameraSelect">Camera:</label>
-            <select id="cameraSelect"></select>
-        </div>
-        <div>
-            <label for="micSelect">Microphone:</label>
-            <select id="micSelect"></select>
+        <div class="media-controls">
+            <div id="localVideo-container">
+                <video autoplay playsinline muted></video>
+            </div>
+
+            <div class="select-container">
+                <div>
+                    <label for="cameraSelect">Camera:</label>
+                    <select id="cameraSelect"></select>
+                </div>
+                <div>
+                    <label for="micSelect">Microphone:</label>
+                    <select id="micSelect"></select>
+                </div>
+            </div>
+
+            <div class="toggle-buttons">
+                <button id="toggleMicBtn">Toggle Microphone</button>
+                <button id="toggleCamBtn">Toggle Camera</button>
+            </div>
         </div>
 
-        <div id="videos">
-            <div id="videoGrid" class="grid-container"></div>
-            <button id="toggleMicBtn">Toggle Microphone</button>
-            <button id="toggleCamBtn">Toggle Camera</button>
-        </div>
+        <div id="videoGrid" class="video-grid"></div>
+    </div>
 
-        <script src="/conference/socket.io/socket.io.js"></script>
-        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-        <script src="/conference/js/webtrc.js"></script>
-        <script src="/conference/js/main.js"></script>
-    </body>
+    <script src="/conference/socket.io/socket.io.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="/conference/js/webtrc.js"></script>
+    <script src="/conference/js/main.js"></script>
+</body>
 </html>
